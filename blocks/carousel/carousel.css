@@ -348,3 +348,175 @@ main > .section:has(> .carousel-wrapper:last-child) {
     display: none;
   }
 }
+
+.carousel.split {
+  --color-bg: var(--flame-700);
+  --color-link: var(--white);
+  --color-link-hover: var(--white);
+  --color-accent-text: var(--white);
+  --color-accent-fill: var(--white);
+  --color-accent-fill-hover: var(--flame-100);
+  --color-on-accent: var(--flame-600);
+}
+
+.carousel.split .carousel-slide {
+  align-items: center;
+  min-height: 34rem;
+}
+
+.carousel.split .carousel-slide-background {
+  position: absolute;
+  inset: 0;
+}
+
+.carousel.split .carousel-slide-background :is(picture, img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.carousel.split .carousel-slide-media {
+  inset: auto 2rem 6rem;
+  width: calc(100% - 4rem);
+  height: 14rem;
+}
+
+.carousel.split .carousel-slide-media::after {
+  display: none;
+}
+
+.carousel.split .carousel-slide-media :is(picture, img) {
+  object-fit: contain;
+}
+
+.carousel.split .carousel-slide-content {
+  padding-block: 3rem 20rem;
+}
+
+.carousel.split .carousel-slide-content :is(h1, h2, h3) {
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.carousel.thumbnails .carousel-prev,
+.carousel.thumbnails .carousel-next {
+  display: none;
+}
+
+.carousel.thumbnails .carousel-controls {
+  bottom: 1rem;
+  width: min(calc(100% - 2rem), var(--container));
+}
+
+.carousel.thumbnails .carousel-dots {
+  flex: 1;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.carousel.thumbnails .carousel-dots li {
+  flex: 0 0 2.75rem;
+}
+
+.carousel.thumbnails .carousel-dot {
+  display: grid;
+  align-items: end;
+  width: 100%;
+  height: 2.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--carousel-line);
+  border-radius: 4px;
+  background: var(--flame-700);
+  color: var(--white);
+  text-align: left;
+}
+
+.carousel.thumbnails .carousel-dot::before,
+.carousel.thumbnails .carousel-dot::after {
+  display: none;
+}
+
+.carousel.thumbnails .carousel-dot picture,
+.carousel.thumbnails .carousel-dot img,
+.carousel.thumbnails .carousel-dot span {
+  display: none;
+}
+
+.carousel.thumbnails .carousel-dot span {
+  overflow: hidden;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.carousel.thumbnails .carousel-dot.active {
+  border-color: var(--volt-400);
+  background: var(--flame-600);
+}
+
+@media (width >= 900px) {
+  .carousel.split .carousel-slide {
+    min-height: 38rem;
+  }
+
+  .carousel.split .carousel-slide-media {
+    inset: 3rem 5% 9rem auto;
+    width: 40%;
+    height: auto;
+  }
+
+  .carousel.split .carousel-slide-content {
+    padding-block: 4rem 12rem;
+  }
+
+  .carousel.split .carousel-slide-content > * {
+    max-width: 55%;
+  }
+
+  .carousel.split .carousel-slide-content :is(h1, h2, h3) {
+    font-size: 2.5rem;
+  }
+
+  .carousel.thumbnails .carousel-prev,
+  .carousel.thumbnails .carousel-next {
+    display: grid;
+  }
+
+  .carousel.thumbnails .carousel-dots li {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .carousel.thumbnails .carousel-dot {
+    position: relative;
+    height: 9rem;
+    overflow: hidden;
+  }
+
+  .carousel.thumbnails .carousel-dot picture,
+  .carousel.thumbnails .carousel-dot img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .carousel.thumbnails .carousel-dot span {
+    display: -webkit-box;
+    position: relative;
+    z-index: 1;
+    margin: -0.5rem;
+    padding: 0.5rem;
+    background: var(--flame-700);
+    font-size: 0.875rem;
+    -webkit-line-clamp: 3;
+  }
+}

@@ -87,6 +87,7 @@ then **paste one prompt** into your AI tool. You approve commits once and do the
 | CloneIt: "isn't a member of scdemos" | Check the GitHub username spelling, or ask an scdemos admin to add you to the org |
 | Agent can't run browsers or scripts | `node .skills/customer-demo/scripts/setup-check.mjs --fix` |
 | Publish / config calls fail with 401 | Sign in to `da.live` again in the agent's browser tab (the sign-in lasts about a day) |
+| DA config writes return 403, but page publishing works | Ask a DA org administrator for config-write permission on `scdemos/<slug>`. AEM site-admin and DA source-write access do not guarantee DA config-write access. The agent must not bypass this permission check |
 
 **Feedback loop:** each run ends with a retro. When you hit something new, say so. The fix goes
 into the skill, a script check or the base, so the next SC doesn't hit it.

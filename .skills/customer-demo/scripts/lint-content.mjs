@@ -100,9 +100,30 @@ export function lintRepeats(plainByPage) {
     `same section inline on ${[...pages].join(', ')}: "${key.slice(0, 60)}…" → make it /fragments/<name> and use a fragment block`, 'duplicated content']);
 }
 
+export function createFragmentResolver(siteOrigins, read = get, report = () => {}) {
+  const cache = new Map();
+  const resolve = async (html, seen = new Set()) => {
+    const paths = blocksIn(html).filter(block => block.name === 'fragment')
+      .flatMap(block => block.rows.flat().flatMap(hrefs))
+      .map(link => internalPath(link, siteOrigins)).filter(fragment => fragment?.startsWith('/fragments/'));
+    const content = await Promise.all(paths.map(async (fragment) => {
+      if (seen.has(fragment)) return '';
+      if (!cache.has(fragment)) cache.set(fragment, read(`${siteOrigins.live}${fragment}.plain.html`));
+      const response = await cache.get(fragment);
+      if (!response.ok) {
+        report([['FAIL', 'lint:fragment', 'P1', `${fragment}: ${response.status}`]]);
+        return '';
+      }
+      return resolve(response.body, new Set([...seen, fragment]));
+    }));
+    return html + content.join('');
+  };
+  return resolve;
+}
+
 /* ---------- self-test (P9) ---------- */
 
-function selfTest() {
+async function selfTest() {
   const page = (inner, h1 = '<h1>T</h1>') => `<div>${h1}${inner}</div>`;
   const cases = [
     ['tabs table', lintPage('/p', page('<div class="tabs"><div><div>A</div><div>B</div></div></div>')), true],
@@ -119,6 +140,26 @@ function selfTest() {
     ['repeat inline', lintRepeats({ '/a': `<div><p>${'Talk to our institutional team about your goals today. '.repeat(2)}</p></div>`, '/b': `<div><p>${'Talk to our institutional team about your goals today. '.repeat(2)}</p></div>` }), true],
     ['repeat as fragment', lintRepeats({ '/a': '<div><div class="fragment"><div><div><a href="/fragments/cta">/fragments/cta</a></div></div></div></div>', '/b': '<div><div class="fragment"><div><div><a href="/fragments/cta">/fragments/cta</a></div></div></div></div>' }), false],
   ];
+  const fragment = name => `<div class="fragment"><div><div><a href="/fragments/${name}">/fragments/${name}</a></div></div></div>`;
+  const siteOrigins = origins('test');
+  const findings = [];
+  let reads = 0;
+  const fixtures = {
+    [`${siteOrigins.live}/fragments/title.plain.html`]: page(fragment('nested'), '<h1>Title</h1>'),
+    [`${siteOrigins.live}/fragments/nested.plain.html`]: page(fragment('title'), '<p>Nested content</p>'),
+  };
+  const resolve = createFragmentResolver(siteOrigins, async (url) => {
+    reads += 1;
+    return fixtures[url] ? { ok: true, body: fixtures[url] } : { ok: false, status: 404 };
+  }, results => findings.push(...results));
+  const expanded = await resolve(page(fragment('title'), ''));
+  cases.push(['fragment H1', lintPage('/p', expanded), false]);
+  cases.push(['nested fragment', expanded.includes('Nested content') ? [] : [['FAIL']], false]);
+  cases.push(['fragment cycle', (expanded.match(/<h1>/g) || []).length === 1 ? [] : [['FAIL']], false]);
+  await resolve(page(fragment('title'), ''));
+  cases.push(['fragment cache', reads === 2 ? [] : [['FAIL']], false]);
+  await resolve(page(fragment('missing')));
+  cases.push(['missing fragment', findings, true]);
   let bad = 0;
   cases.forEach(([name, results, expectFail]) => {
     const failed = results.some((r) => r[0] === 'FAIL');
@@ -133,7 +174,7 @@ function selfTest() {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args['self-test']) selfTest();
+  if (args['self-test']) return selfTest();
   if (!args.site) {
     console.error('usage: node lint-content.mjs --site <slug> [--preview] [--original <url>] | --self-test');
     process.exit(2);
@@ -157,14 +198,20 @@ async function main() {
     return r.ok;
   });
   if (!linted.length) push([['FAIL', 'lint:no-pages', 'P1', 'no page could be loaded: nothing was linted']]);
-  linted.forEach(([p, r]) => push(lintPage(p, r.body, { faqIndex, originalHost })));
+  const expanded = new Map();
+  const resolveFragments = createFragmentResolver(o, get, push);
+  await Promise.all(linted.map(async ([page, response]) => {
+    const html = await resolveFragments(response.body);
+    expanded.set(page, html);
+    push(lintPage(page, html, { faqIndex, originalHost }));
+  }));
   push(lintRepeats(Object.fromEntries(linted.map(([p, r]) => [p, r.body]))));
 
   const chrome = await Promise.all(['nav', 'footer'].map(async (n) => [n, await get(`${o.live}/${n}.plain.html`)]));
   chrome.forEach(([n, r]) => push(r.ok ? lintChrome(n, r.body) : [['WARN', 'lint:chrome', 'P2', `/${n} not available (${r.status})`]]));
 
   const sheets = new Set();
-  Object.entries(plain).forEach(([, r]) => blocksIn(r.body).filter((b) => b.name === 'form').forEach((b) => b.rows.flat().flatMap(hrefs).map((h) => internalPath(h, o)).filter((x) => x?.endsWith('.json')).forEach((x) => sheets.add(x))));
+  [...expanded.values()].forEach((html) => blocksIn(html).filter((b) => b.name === 'form').forEach((b) => b.rows.flat().flatMap(hrefs).map((h) => internalPath(h, o)).filter((x) => x?.endsWith('.json')).forEach((x) => sheets.add(x))));
   await Promise.all([...sheets].map(async (s) => {
     const r = await getJson(`${o.live}${s}`);
     push(r.json ? lintFormSheet(s, sheetRows(r.json)) : [['WARN', 'lint:form-sheet', 'P1', `${s} not reachable (${r.status})`]]);

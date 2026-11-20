@@ -26,16 +26,26 @@ const API = 'https://admin.da.live/config';
 export function mergeDaConfig(base, site, { slug, scEmail, org = 'scdemos' }) {
   if (!slug || slug === 'demo') throw new Error('slug is required and must not be the base');
   if (!/^[^@\s]+@adobe\.com$/i.test(scEmail || '')) throw new Error('sc-email must be the SC\'s @adobe.com address (publish approver)');
-  const rewrite = (v) => (typeof v !== 'string' ? v : v
-    .replace(/https:\/\/demo\.bbird\.live\/tools\/demo\/demo\.html[^\s"]*/g, `https://main--${slug}--${org}.aem.page/tools/demo/demo.html?url=/tools/demo/${slug}-walkthrough.json`)
-    .replace(new RegExp(`${org}/demo(?![a-z0-9-])`, 'g'), `${org}/${slug}`)
-    .replace(new RegExp(`main--demo--${org}`, 'g'), `main--${slug}--${org}`));
+  const rewrite = (value) => {
+    if (typeof value !== 'string') return value;
+    const rewritten = value
+      .replace(/https:\/\/demo\.bbird\.live\/tools\/demo\/demo\.html[^\s"]*/g, `https://main--${slug}--${org}.aem.page/tools/demo/demo.html?url=/tools/demo/${slug}-walkthrough.json`)
+      .replace(new RegExp(`${org}/demo(?![a-z0-9-])`, 'g'), `${org}/${slug}`)
+      .replace(new RegExp(`main--demo--${org}`, 'g'), `main--${slug}--${org}`);
+    if (!rewritten.startsWith('/') && !/^https?:\/\//.test(rewritten)) return rewritten;
+    const url = new URL(rewritten, 'https://da.live');
+    if (url.searchParams.get('org') !== org || url.searchParams.get('site') !== 'demo') return rewritten;
+    url.searchParams.set('site', slug);
+    return rewritten.startsWith('/') ? `${url.pathname}${url.search}${url.hash}` : url.href;
+  };
   const idOf = (r) => r.title || r.key || r.pattern || r.group || JSON.stringify(r);
   const names = [...new Set([...(base[':names'] || []), ...(site[':names'] || [])])];
   const out = { ':names': names, ':version': base[':version'] || 3, ':type': 'multi-sheet' };
   names.forEach((n) => {
     const baseRows = (base[n]?.data || []).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, rewrite(v)])));
-    const siteRows = site[n]?.data || [];
+    const siteRows = (site[n]?.data || []).map((row) => Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [key, rewrite(value)]),
+    ));
     let rows;
     if (n === 'publish-workflow-config') {
       rows = [{ pattern: '/*', approvers: scEmail, cc: '', notifyonreject: 'true' }];
@@ -51,7 +61,13 @@ export function mergeDaConfig(base, site, { slug, scEmail, org = 'scdemos' }) {
 export function baseRefs(cfg, org = 'scdemos') {
   const hits = [];
   (cfg[':names'] || []).forEach((n) => (cfg[n]?.data || []).forEach((r, i) => Object.entries(r).forEach(([c, v]) => {
-    if (new RegExp(`${org}/demo(?![a-z0-9-])|main--demo--${org}|demo\\.bbird\\.live/tools/`).test(String(v))) hits.push(`${n}[${i}].${c}`);
+    const value = String(v);
+    let siteParameter = false;
+    if (value.startsWith('/') || /^https?:\/\//.test(value)) {
+      const url = new URL(value, 'https://da.live');
+      siteParameter = url.searchParams.get('org') === org && url.searchParams.get('site') === 'demo';
+    }
+    if (siteParameter || new RegExp(`${org}/demo(?![a-z0-9-])|main--demo--${org}|demo\\.bbird\\.live/tools/`).test(value)) hits.push(`${n}[${i}].${c}`);
   })));
   return hits;
 }

@@ -196,9 +196,12 @@
     "carousel": {
       "level": 5,
       "variants": [
-        "autoplay"
+        "autoplay",
+        "split",
+        "thumbnails"
       ],
-      "use": "rotating hero/promo slides with prev/next arrows, dots (progress pill when autoplay), keyboard + reduced-motion support. Each row = image cell | content cell.",
+      "use": "rotating hero/promo slides with prev/next arrows, dots (progress pill when autoplay), keyboard + reduced-motion support. Split frames artwork separately; thumbnails uses image/title controls on desktop and compact indicators on mobile.",
+      "contentModel": "Each row = image cell | content cell. With split, an optional third cell supplies a full-bleed background image. Images may be omitted; headings supply thumbnail labels.",
       "baseCandidate": true
     },
     "campaign": {
@@ -323,6 +326,11 @@
     "login-label / logout-label": "override the header sign-in / sign-out link text"
   },
   "chrome": {
+    "header nav-layout: stacked": {
+      "level": 6,
+      "baseCandidate": true,
+      "use": "Utility links, authored logo, search, and a separate primary-navigation row. Uses the existing four-section nav model."
+    },
     "header nav-layout: rail": {
       "level": 6,
       "use": "fixed left icon rail for primary sections (icons via :rail-*: in nav), square brand mark (:rail-mark:), wide top search, secondary CTA buttons; collapses to hamburger below 900px"

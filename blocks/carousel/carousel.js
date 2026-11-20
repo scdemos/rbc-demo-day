@@ -27,14 +27,22 @@ function showSlide(block, index, { focus = false } = {}) {
   if (focus) slides[next].querySelector('h1, h2, h3')?.focus({ preventScroll: true });
 }
 
-function buildSlide(row, index) {
+function buildSlide(row, index, split) {
   const slide = createTag('div', {
     class: 'carousel-slide',
     role: 'group',
     'aria-roledescription': 'slide',
     id: `carousel-slide-${index}`,
   });
-  const [mediaCell, contentCell] = [...row.children];
+  const [mediaCell, contentCell, backgroundCell] = [...row.children];
+  const background = split && backgroundCell?.querySelector('picture img');
+  if (background) {
+    const picture = createOptimizedPicture(background.src, '', index === 0, [
+      { media: '(min-width: 900px)', width: '2000' },
+      { width: '900' },
+    ]);
+    slide.append(createTag('div', { class: 'carousel-slide-background' }, picture));
+  }
   const img = mediaCell?.querySelector('picture img');
   if (img) {
     const optimized = createOptimizedPicture(img.src, img.alt || '', index === 0, [
@@ -90,7 +98,9 @@ function startAutoplay(block) {
   start();
 }
 
-function buildControls(block, count) {
+function buildControls(block, rows) {
+  const count = rows.length;
+  const slides = [...block.querySelectorAll('.carousel-slide')];
   // focus stays on the control so Next can be pressed again (WAI-ARIA carousel pattern)
   const go = (delta) => showSlide(block, Number(block.dataset.activeSlide) + delta);
   const prev = createTag('button', { type: 'button', class: 'carousel-prev', 'aria-label': 'Previous slide' });
@@ -106,6 +116,13 @@ function buildControls(block, count) {
       'aria-label': `Show slide ${i + 1} of ${count}`,
       'aria-controls': `carousel-slide-${i}`,
     });
+    if (block.classList.contains('thumbnails')) {
+      const image = rows[i].children[2]?.querySelector('picture, img')
+        || rows[i].firstElementChild?.querySelector('picture, img');
+      const heading = slides[i].querySelector('h1, h2, h3');
+      if (image) dot.append(image.cloneNode(true));
+      if (heading) dot.append(createTag('span', {}, heading.textContent.trim()));
+    }
     dot.addEventListener('click', () => showSlide(block, i));
     dots.append(createTag('li', {}, dot));
   }
@@ -130,10 +147,10 @@ export default function decorate(block) {
   block.setAttribute('aria-label', 'Featured');
 
   const track = createTag('div', { class: 'carousel-slides' });
-  rows.forEach((row, i) => track.append(buildSlide(row, i)));
+  rows.forEach((row, i) => track.append(buildSlide(row, i, block.classList.contains('split'))));
   block.replaceChildren(track);
 
-  if (rows.length > 1) block.append(buildControls(block, rows.length));
+  if (rows.length > 1) block.append(buildControls(block, rows));
   showSlide(block, 0);
   if (rows.length > 1) startAutoplay(block);
 }
