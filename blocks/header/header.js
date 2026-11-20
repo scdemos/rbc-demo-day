@@ -311,7 +311,12 @@ export default async function decorate(block) {
   const wrapper = createTag('div', { class: 'nav-wrapper' });
 
   const announce = buildAnnounce(announceSec);
-  if (announce) wrapper.append(announce);
+  const utilityList = layout === 'stacked' && announceSec?.querySelector('ul');
+  if (utilityList) {
+    wrapper.append(createTag('nav', {
+      class: 'header-utility', 'aria-label': labels.utility || primaryLabel,
+    }, utilityList.cloneNode(true)));
+  } else if (announce) wrapper.append(announce);
 
   /* header bar */
   const bar = createTag('div', { class: 'header-bar' });
@@ -320,8 +325,12 @@ export default async function decorate(block) {
   const brandLink = brandSec?.querySelector('a');
   const brand = createTag('a', { class: 'header-brand', href: brandLink ? authoredHref(brandLink) : getMarket().root });
   if (labels.home) brand.setAttribute('aria-label', labels.home);
-  brand.innerHTML = LOGO_MARK;
-  brand.append(createTag('span', labels.home ? { 'aria-hidden': 'true' } : {}, brandLink?.textContent.trim() || 'Frescopa'));
+  const authoredLogo = brandLink?.querySelector('picture, img, .icon-logo');
+  if (authoredLogo) brand.append(authoredLogo.cloneNode(true));
+  else {
+    brand.innerHTML = LOGO_MARK;
+    brand.append(createTag('span', labels.home ? { 'aria-hidden': 'true' } : {}, brandLink?.textContent.trim() || 'Frescopa'));
+  }
   if (rail) {
     /* square brand mark above the rail: authored `:rail-mark:` icon, else the logo mark */
     const tile = createTag('span', { class: 'header-rail-mark', 'aria-hidden': 'true' });
@@ -423,7 +432,7 @@ export default async function decorate(block) {
     syncTheme();
   });
   syncTheme();
-  actions.append(themeBtn);
+  if (layout !== 'stacked') actions.append(themeBtn);
 
   if (signIn) {
     const a = createTag('a', { class: 'header-signin', href: signIn.href });
@@ -445,7 +454,7 @@ export default async function decorate(block) {
   actions.append(menuBtn);
 
   inner.append(brand, nav);
-  if (rail && searchLink) inner.append(buildRailSearch(searchLink));
+  if ((rail || layout === 'stacked') && searchLink) inner.append(buildRailSearch(searchLink));
   inner.append(actions);
   bar.append(inner);
   wrapper.append(bar);

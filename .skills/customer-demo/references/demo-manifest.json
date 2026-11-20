@@ -70,6 +70,12 @@
     "head-row": "heading left, lone link paragraph right (e.g. \"Latest news\" ... \"All news\")"
   },
   "blocks": {
+    "accordion": {
+      "variants": [],
+      "use": "Authored expandable content: each row has a title cell and a rich-content cell. Native details/summary supports keyboard interaction.",
+      "level": 5,
+      "baseCandidate": true
+    },
     "hero": {
       "variants": [
         "home",

@@ -57,13 +57,14 @@ const ctx = await browser.newContext({
 await ctx.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
 
 for (const p of pages) {
+  const target = /^https?:\/\//.test(p) ? p : base + p;
   const dir = path.join(out, slug(p));
   fs.mkdirSync(dir, { recursive: true });
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)); });
   page.on('response', (r) => { if (r.status() >= 400 && !/analytics|beacon|collect|adobedc|demdex/.test(r.url())) errors.push(`${r.status()} ${r.url()}`); });
-  let resp = await page.goto(base + p, { waitUntil: 'load', timeout: 60000 });
+  let resp = await page.goto(target, { waitUntil: 'load', timeout: 60000 });
   await page.waitForTimeout(3000);
   for (const name of dismiss) {
     const btn = page.getByRole('button', { name, exact: true }).first();
@@ -73,9 +74,9 @@ for (const p of pages) {
   // dismissing gates can trigger a navigation/reload: settle, then re-open the target if we left it
   await page.waitForLoadState('load').catch(() => {});
   await page.waitForTimeout(1500);
-  if (!page.url().startsWith(base + p.replace(/\/$/, ''))) {
+  if (!page.url().startsWith(target.replace(/\/$/, ''))) {
     // the status we report must belong to the load we screenshot
-    resp = await page.goto(base + p, { waitUntil: 'load', timeout: 60000 });
+    resp = await page.goto(target, { waitUntil: 'load', timeout: 60000 });
     await page.waitForTimeout(2500);
   }
   await page.evaluate(async () => {
@@ -97,7 +98,7 @@ for (const p of pages) {
   }
   // functional parity runs last: it opens menus and moves carousels, which would skew the screenshots
   const interactions = args.interact === 'true' ? await interact(page, width).catch((e) => ({ error: e.message.split('\n')[0] })) : undefined;
-  fs.writeFileSync(path.join(dir, 'page.json'), JSON.stringify({ url: base + p, status: resp?.status(), errors, ...info, interactions }, null, 2));
+  fs.writeFileSync(path.join(dir, 'page.json'), JSON.stringify({ url: target, status: resp?.status(), errors, ...info, interactions }, null, 2));
   console.log(`${p} -> ${dir} (status ${resp?.status()}, ${info.sections.length} sections, ${errors.length} errors)`);
   await page.close();
 }
